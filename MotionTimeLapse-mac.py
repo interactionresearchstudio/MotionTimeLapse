@@ -6,11 +6,6 @@ import json
 import time
 import datetime
 
-#ifdef pi
-from picamera.array import PiRGBArray
-from picamera import PiCamera
-import RPi.GPIO as GPIO
-#endif
 
 # load configuration file
 conf = json.load(open("conf.json"))
@@ -18,7 +13,6 @@ conf = json.load(open("conf.json"))
 # new window and start capture
 cv2.namedWindow("preview")
 
-#ifdef mac
 capture = cv2.VideoCapture(0)
 capture.set(3, 320)
 capture.set(4, 240)
@@ -26,32 +20,11 @@ if capture.isOpened():
     rval, frame = capture.read()
 else:
     rval = False
-#endif
 
-#ifdef pi
-camera = PiCamera()
-camera.resolution=(320,240)
-camera.framerate=32
-rawCapture = PiRGBArray(camera, size=(320,240))
-#endif
 
 time.sleep(0.1)
 
 # buttons
-#ifdef pi
-btn1 = 17
-btn2 = 22
-btn3 = 23
-btn4 = 27
-btnShutter = 21
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
-GPIO.setup(btn1, GPIO.IN, GPIO.PUD_UP)
-GPIO.setup(btn2, GPIO.IN, GPIO.PUD_UP)
-GPIO.setup(btn3, GPIO.IN, GPIO.PUD_UP)
-GPIO.setup(btn4, GPIO.IN, GPIO.PUD_UP)
-GPIO.setup(btnShutter, GPIO.IN, GPIO.PUD_UP)
-#endif
 
 avg = None
 
@@ -108,22 +81,10 @@ def showTimelapse():
     imageIndex = 0
 
 # main cv loop
-#ifdef mac
 while rval:
-#endif
-#ifdef pi
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-#endif
     if mode is 0:
         # standby.
-        #ifdef pi
-        if GPIO.input(btnShutter) == False:
-            # start recording. 
-            startRecording()
-        #endif
-        #ifdef mac
         rval, frame = capture.read()
-        #endif
         cv2.imshow("preview", frame)
         
     if mode is 1:
