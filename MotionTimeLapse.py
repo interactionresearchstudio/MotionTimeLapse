@@ -1,4 +1,4 @@
-#define mac
+#define pi
 
 import cv2
 import imutils
@@ -15,8 +15,13 @@ import RPi.GPIO as GPIO
 # load configuration file
 conf = json.load(open("conf.json"))
 
-# new window and start capture
-cv2.namedWindow("preview")
+#ifdef pi
+cv2.namedWindow("Output", cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty("Output", cv2.WND_PROP_FULLSCREEN, 1)
+#endif
+#ifdef mac
+cv2.namedWindow("Output")
+#endif
 
 #ifdef mac
 capture = cv2.VideoCapture(0)
@@ -124,7 +129,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         #ifdef mac
         rval, frame = capture.read()
         #endif
-        cv2.imshow("preview", frame)
+        cv2.imshow("Output", frame)
         
     if mode is 1:
         # grab frame, resize and convert to gray
@@ -161,8 +166,16 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             print("[INFO] Picture saved.")
 
         # show delta
-        cv2.imshow("preview", frameDelta)
+        cv2.imshow("Output", frameDelta)
         rval, frame = capture.read()
+        
+        #ifdef pi
+        if GPIO.input(btnShutter) == False:
+            # start recording. 
+            stopRecording()
+            showTimeLapse()
+            time.sleep(0.5)
+        #endif
 
     if mode is 2:
         currentTime = time.time()
@@ -172,10 +185,17 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 imageIndex = 0
             currentFileName = startPicture + "-%d.jpg" % imageIndex
             currentFrame = cv2.imread(currentFileName, cv2.IMREAD_COLOR)
-            cv2.imshow("preview", currentFrame)
+            cv2.imshow("Output", currentFrame)
             print("[INFO] Showing picture %d" % imageIndex)
             imageIndex = imageIndex + 1
             previousPictureTime = currentTime
+
+        #ifdef pi
+        if GPIO.input(btnShutter) == False:
+            # back to standby
+            mode = 0
+            time.sleep(0.5)
+        #endif
 
     # keys
     key = cv2.waitKey(10)
