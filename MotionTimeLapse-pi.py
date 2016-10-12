@@ -94,6 +94,7 @@ def showTimelapse():
 
 # main cv loop
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+    frame = frame.array
     if mode is 0:
         # standby.
         if GPIO.input(btnShutter) == False:
@@ -165,6 +166,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
     # keys
     key = cv2.waitKey(10)
+    rawCapture.truncate(0)
     if key == ord("0"):
         mode = 0
     if key == ord("1"):
