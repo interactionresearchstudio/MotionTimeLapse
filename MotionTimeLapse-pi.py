@@ -1,10 +1,10 @@
 #define pi
 
 import cv2
-import imutils
 import json
 import time
 import datetime
+import numpy as np
 
 from picamera.array import PiRGBArray
 from picamera import PiCamera
@@ -29,7 +29,7 @@ btn1 = 17
 btn2 = 22
 btn3 = 23
 btn4 = 27
-btnShutter = 21
+btnShutter = btn1
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(btn1, GPIO.IN, GPIO.PUD_UP)
@@ -94,17 +94,17 @@ def showTimelapse():
 
 # main cv loop
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-    frame = frame.array
+    image = frame.array
     if mode is 0:
         # standby.
         if GPIO.input(btnShutter) == False:
             # start recording. 
             startRecording()
-        cv2.imshow("Output", frame)
+        cv2.imshow("Output", image)
         
     if mode is 1:
         # grab frame, resize and convert to gray
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21,21), 0)
 
         # capture first frame of background model
@@ -131,19 +131,18 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         currentTime = time.time()
         if currentTime - previousPictureTime > pictureFrequency:
             fileName = "-%d.jpg" % imageIndex
-            cv2.imwrite(startPicture + fileName, frame)
+            cv2.imwrite(startPicture + fileName, image)
             imageIndex = imageIndex + 1
             previousPictureTime = currentTime
             print("[INFO] Picture saved.")
 
         # show delta
         cv2.imshow("Output", frameDelta)
-        rval, frame = capture.read()
         
         if GPIO.input(btnShutter) == False:
             # start recording. 
             stopRecording()
-            showTimeLapse()
+            showTimelapse()
             time.sleep(0.5)
 
     if mode is 2:
