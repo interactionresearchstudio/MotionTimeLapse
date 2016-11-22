@@ -118,7 +118,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             # start recording. 
             startRecording()
         if conf["flip_camera"] is 1:
-            currentFrame = rotateImage(currentFrame)
+            image = rotateImage(image)
         cv2.imshow("Output", image)
         
     if mode is 1:
