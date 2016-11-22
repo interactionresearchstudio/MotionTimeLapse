@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #define pi
 
 import cv2
@@ -5,17 +6,18 @@ import json
 import time
 import datetime
 import numpy as np
+import os
 
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import RPi.GPIO as GPIO
 
 # load configuration file
+os.chdir("/home/pi/MotionTimeLapse")
 conf = json.load(open("conf.json"))
 
 cv2.namedWindow("Output", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("Output", cv2.WND_PROP_FULLSCREEN, 1)
-
 
 camera = PiCamera()
 camera.resolution=(320,240)
@@ -42,10 +44,12 @@ avg = None
 
 previousPictureTime = 0
 previousCheckTime = 0
+previousTimelapseChange = 0
 pictureFrequency = 1
 previousMotionFactor = 0.0
 startPicture = ""
 imageIndex = 0
+timelapseIndex = 0
 numOfPhotos = 0
 
 # modes:
@@ -68,12 +72,16 @@ def startRecording():
     global startPicture
     global imageIndex
     global numOfPhotos
+    global previousTimelapseChange
+    global timelapseIndex
     imageIndex = 0
     numOfPhotos = 0
     previousPictureTime = 0
     previousCheckTime = 0
     pictureFrequency = 1
     previousMotionFactor = 0.0
+    previousTimelapseChange = 0
+    timelapseIndex = 0
     timestamp = datetime.datetime.now()
     startPicture = timestamp.strftime('%Y-%m-%d-%H-%M-%S')
     print("[INFO] Start picture: " + startPicture)
@@ -92,14 +100,25 @@ def showTimelapse():
     mode = 2
     imageIndex = 0
 
+def rotateImage(img):
+    (h,w) = img.shape[:2]
+    center = (w/2, h/2)
+    M = cv2.getRotationMatrix2D(center, 180, 1.0)
+    return cv2.warpAffine(img, M, (w,h))
+
 # main cv loop
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     image = frame.array
+    image = cv2.flip(image, 1)
+    image = cv2.flip(image, 0)
+    
     if mode is 0:
         # standby.
         if GPIO.input(btnShutter) == False:
             # start recording. 
             startRecording()
+        if conf["flip_camera"] is 1:
+            currentFrame = rotateImage(currentFrame)
         cv2.imshow("Output", image)
         
     if mode is 1:
@@ -137,12 +156,24 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             print("[INFO] Picture saved.")
 
         # show delta
-        cv2.imshow("Output", frameDelta)
+        #cv2.imshow("Output", frameDelta)
+        if currentTime - previousTimelapseChange >= conf["timelapse_preview_speed"] and imageIndex > 1:
+            if timelapseIndex > imageIndex-1:
+                timelapseIndex = 0
+            currentFileName = startPicture + "-%d.jpg" % timelapseIndex
+            currentFrame = cv2.imread(currentFileName, cv2.IMREAD_COLOR)
+            if conf["flip_camera"] is 1:
+                currentFrame = rotateImage(currentFrame)
+            cv2.imshow("Output", currentFrame) 
+            print("[INFO] Showing picture %d" % timelapseIndex)
+            timelapseIndex = timelapseIndex + 1
+            previousTimelapseChange = currentTime
         
-        if GPIO.input(btnShutter) == False:
+        if GPIO.input(btnShutter) == False and imageIndex > 2:
             # start recording. 
             stopRecording()
-            showTimelapse()
+            #showTimelapse()
+            mode = 0
             time.sleep(0.5)
 
     if mode is 2:
@@ -153,6 +184,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 imageIndex = 0
             currentFileName = startPicture + "-%d.jpg" % imageIndex
             currentFrame = cv2.imread(currentFileName, cv2.IMREAD_COLOR)
+            if conf["flip_camera"] is 1:
+                currentFrame = rotateImage(currentFrame)
             cv2.imshow("Output", currentFrame)
             print("[INFO] Showing picture %d" % imageIndex)
             imageIndex = imageIndex + 1
