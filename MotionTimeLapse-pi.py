@@ -93,6 +93,7 @@ def stopRecording():
     global numOfPhotos
     numOfPhotos = imageIndex
     print("Finished with a total of %d photos" % numOfPhotos)
+    compileTimelapse(startPicture)
 
 def showTimelapse():
     global mode
@@ -105,6 +106,10 @@ def rotateImage(img):
     center = (w/2, h/2)
     M = cv2.getRotationMatrix2D(center, 180, 1.0)
     return cv2.warpAffine(img, M, (w,h))
+
+def compileTimelapse(filename):
+    command = "gst-launch-1.0 multifilesrc location=" + filename + "-%d.jpg index=1 caps='image/jpeg,framerate=4/1' ! jpegdec ! omxh264enc ! avimux ! filesink location=" + filename + ".avi"
+    os.system(command)
 
 # main cv loop
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
@@ -150,6 +155,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         currentTime = time.time()
         if currentTime - previousPictureTime > pictureFrequency:
             fileName = "-%d.jpg" % imageIndex
+            if conf["flip_video"] is 1:
+                image = rotateImage(image)
             cv2.imwrite(startPicture + fileName, image)
             imageIndex = imageIndex + 1
             previousPictureTime = currentTime
@@ -162,7 +169,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 timelapseIndex = 0
             currentFileName = startPicture + "-%d.jpg" % timelapseIndex
             currentFrame = cv2.imread(currentFileName, cv2.IMREAD_COLOR)
-            if conf["flip_camera"] is 1:
+            if conf["flip_camera"] is 1 or conf["flip_video"] is 1:
                 currentFrame = rotateImage(currentFrame)
             cv2.imshow("Output", currentFrame) 
             print("[INFO] Showing picture %d" % timelapseIndex)
